@@ -20,7 +20,6 @@ app.use('/api/auth', authRoutes); //endpoint testeado y funcionando
 app.use('/api/usuarios', usuariosRoutes); //endpoint testeado y funcionando
 app.use('/api/clientes', clientesRoutes);//endpoint testeado y funcionando
 app.use('/api/viajes', viajesRoutes);//--e`dpoint testeado y funcionando
-//reportes excel (admin)
 app.use('/api/reportes', reportesRoutes);//endpoint en desarrollo
 
 
