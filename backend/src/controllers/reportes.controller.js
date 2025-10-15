@@ -96,11 +96,12 @@ export const exportarExcel = async (req, res) => {
       { header: "Cargado", key: "cargado", width: 10 },
       { header: "Observaciones", key: "observaciones", width: 40 },
     ];
+
     if (result.rows.length === 0) {
     return res.status(404).json({
       error: "No hay viajes registrados con los filtros aplicados"
     });
-}
+  }
     result.rows.forEach(row => sheet.addRow(row));
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename=reporte_${tipo}_${id}.xlsx`);
@@ -112,6 +113,7 @@ export const exportarExcel = async (req, res) => {
     res.status(500).json({ error: "Error al generar el Excel" });
   }
 };
+
 export const exportarExcelGeneral = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -142,9 +144,10 @@ export const exportarExcelGeneral = async (req, res) => {
       { header: "Cargado", key: "cargado", width: 10 },
       { header: "Observaciones", key: "observaciones", width: 40 },
     ];
-
+    
+    
     result.rows.forEach(row => sheet.addRow(row));
-
+    
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", "attachment; filename=reporte_general.xlsx");
 
