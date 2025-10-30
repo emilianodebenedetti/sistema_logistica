@@ -147,7 +147,7 @@ export default function Viajes() {
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Listado de Viajes</h1>
+        <h1 className="text-2xl font-bold text-white-800">Listado de Viajes</h1>
 
         <div className="flex items-center gap-2">
           <Label htmlFor="fecha" value="Seleccionar fecha:" />
@@ -158,8 +158,6 @@ export default function Viajes() {
             onChange={(e) => setFecha(e.target.value)}
           />
         </div>
-
-        <Button color="success">Exportar Excel</Button>
       </div>
 
       {error ? (
