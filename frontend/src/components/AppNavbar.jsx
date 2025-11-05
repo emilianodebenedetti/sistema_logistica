@@ -1,5 +1,6 @@
 // ...existing code...
 import { Badge, Button, Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle } from "flowbite-react";
+import { RiLogoutBoxRLine } from "react-icons/ri";
 import { useNavigate } from "react-router-dom";
 
 export default function AppNavbar() {
@@ -22,26 +23,34 @@ export default function AppNavbar() {
       </NavbarBrand>
 
       <div className="flex md:order-2">
-        <Button className="mr-2">{user.nombre}</Button>
+        {/* <Button className="mr-2">{user.nombre}</Button> */}
         <Badge color="light" size="sm" className="mr-4 self-center">{rol}</Badge>
-        <NavbarToggle />
+        {/* <Button href="#" onClick={handleLogout}>Cerrar sesión</Button> */}
+        <button
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          className="flex items-center justify-center p-2 rounded hover:bg-gray-200/20 text-white"
+        >
+          <RiLogoutBoxRLine size={20} />
+        </button>
+        {<NavbarToggle />}
       </div>
 
-      <NavbarCollapse>
-        <NavbarLink href="/viajes">Viajes</NavbarLink>
 
         {rol === "admin" && (
           <>
-            <NavbarLink href="/usuarios">Usuarios</NavbarLink>
-            <NavbarLink href="/clientes">Clientes</NavbarLink>
-            <NavbarLink href="/reportes">Reportes</NavbarLink>
+            <NavbarCollapse>
+              <NavbarLink href="/viajes">Viajes</NavbarLink>
+              <NavbarLink href="/usuarios">Usuarios</NavbarLink>
+              <NavbarLink href="/clientes">Clientes</NavbarLink>
+              <NavbarLink href="/reportes">Reportes</NavbarLink>
+            </NavbarCollapse>   
           </>
         )}
 
-        {rol === "chofer" && <NavbarLink href="/mi-perfil">Mi Perfil</NavbarLink>}
+        {/* {rol === "chofer" && <NavbarLink href="/mi-perfil">Mi Perfil</NavbarLink>} */}
 
-        <NavbarLink href="#" onClick={handleLogout}>Cerrar sesión</NavbarLink>
-      </NavbarCollapse>
+        
     </Navbar>
   );
 }
