@@ -1,134 +1,86 @@
 import pool from '../config/db.js';
 
+// helper: buscar o crear cliente por nombre
+async function getOrCreateClienteId(nombre) {
+  if (!nombre) return null;
+  const trimmed = String(nombre).trim();
+  if (!trimmed) return null;
+
+  const q = await pool.query('SELECT id FROM clientes WHERE nombre = $1', [trimmed]);
+  if (q.rows.length) return q.rows[0].id;
+
+  const ins = await pool.query('INSERT INTO clientes (nombre) VALUES ($1) RETURNING id', [trimmed]);
+  return ins.rows[0].id;
+}
+
 export const crearViaje = async (req, res) => {
-    const { 
-    cliente_id, 
-    matricula, 
-    n_orden, 
-    origen, 
+  const {
+    cliente_id,
+    cliente_nombre,
+    matricula,
+    n_orden,
+    origen,
     destino,
     contenedor,
     tipo_cont,
     cargado,
-    observaciones
-    } = req.body;
+    observaciones,
+  } = req.body;
 
-    // El ID del usuario viene del token JWT
-    const usuario_id = req.user.id;
-    try {
-        const result = await pool.query(
+  const usuario_id = req.user.id;
+
+  if (!n_orden || !origen || !destino) {
+    return res.status(400).json({ message: "Faltan campos requeridos: n_orden/origen/destino" });
+  }
+
+  // resolver cliente: si llega nombre, usarlo; si llega id, usarlo; '' -> null
+  let clienteId = null;
+  try {
+    if (cliente_nombre) {
+      clienteId = await getOrCreateClienteId(cliente_nombre);
+    } else if (cliente_id !== undefined && cliente_id !== "" && cliente_id !== null) {
+      const parsed = Number(cliente_id);
+      if (Number.isNaN(parsed)) return res.status(400).json({ message: "cliente_id inválido" });
+      clienteId = parsed;
+    } else {
+      clienteId = null;
+    }
+
+    // Saneamiento de contenedor: '' -> null, trim
+    const cont = contenedor === "" || contenedor == null ? null : String(contenedor).trim();
+
+    const cargadoBool = cargado === true || cargado === "true" || cargado === 1 || cargado === "1";
+
+    const result = await pool.query(
       `INSERT INTO viajes 
       (usuario_id, matricula, cliente_id, n_orden, origen, destino, contenedor, tipo_cont, cargado, observaciones) 
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) 
       RETURNING *`,
       [
         usuario_id,
-        matricula,
-        cliente_id,
+        matricula || null,
+        clienteId,
         n_orden,
         origen,
         destino,
-        contenedor,
-        tipo_cont,
-        cargado,
-        observaciones,
+        cont,
+        tipo_cont || null,
+        cargadoBool,
+        observaciones || null,
       ]
     );
-        res.status(201).json(result.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error al crear viaje' });
-    }   
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    // si la constraint de contenedor falla, devolver 400 con mensaje claro
+    if (err && (err.constraint === "viajes_contenedor_check" || (err.message && err.message.includes("viajes_contenedor_check")))) {
+      return res.status(400).json({ message: "Contenedor inválido: formato/valor no permitido" });
+    }
+    console.error("crearViaje error:", err && err.stack ? err.stack : err);
+    res.status(500).json({ message: "Error al crear viaje", error: err.message });
+  }
 };
 
-/* export const listarViajes = async (req, res) => {
-  try {
-    const { rol, id } = req.user; // viene del token
-    const { fecha } = req.query; // parámetro opcional ?fecha=YYYY-MM-DD
-
-    // Si no se pasa fecha, usamos la fecha actual (sin hora)
-    const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
-
-    let query = "";
-    let params = [];
-
-    if (rol === "admin") {
-      query = `
-        SELECT v.*, u.nombre AS chofer_nombre 
-        FROM viajes v
-        LEFT JOIN usuarios u ON v.usuario_id = u.id
-        WHERE DATE(v.fecha) = $1
-        ORDER BY v.fecha DESC
-      `;
-      params = [fechaFiltro];
-    } else if (rol === "chofer") {
-      query = `
-        SELECT *
-        FROM viajes
-        WHERE usuario_id = $1 AND DATE(fecha) = $2
-        ORDER BY fecha DESC
-      `;
-      params = [id, fechaFiltro];
-    } else {
-      return res.status(403).json({ message: "Rol no autorizado para ver viajes" });
-    }
-
-    const result = await pool.query(query, params);
-
-    if (result.rows.length === 0) {
-      return res.status(200).json({ message: "No hay viajes para esta fecha" });
-    }
-
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error("Error al obtener viajes:", err);
-    res.status(500).json({ error: "Error al obtener viajes" });
-  }
-}; */
-/* export const listarViajes = async (req, res) => {
-  try {
-    const { rol, id } = req.user; // viene del token
-    const { fecha } = req.query; // parámetro opcional ?fecha=YYYY-MM-DD
-
-    // Si no se pasa fecha, usamos la fecha actual (sin hora)
-    const fechaFiltro = fecha || new Date().toISOString().split('T')[0];
-
-    let query = "";
-    let params = [];
-
-    if (rol === "admin") {
-      query = `
-        SELECT v.*, u.nombre AS chofer_nombre 
-        FROM viajes v
-        LEFT JOIN usuarios u ON v.usuario_id = u.id
-        WHERE DATE(v.fecha) = $1
-        ORDER BY v.fecha DESC
-      `;
-      params = [fechaFiltro];
-    } else if (rol === "chofer") {
-      query = `
-        SELECT *
-        FROM viajes
-        WHERE usuario_id = $1 AND DATE(fecha) = $2
-        ORDER BY fecha DESC
-      `;
-      params = [id, fechaFiltro];
-    } else {
-      return res.status(403).json({ message: "Rol no autorizado para ver viajes" });
-    }
-
-    const result = await pool.query(query, params);
-
-    if (result.rows.length === 0) {
-      return res.status(200).json({ message: "No hay viajes para esta fecha" });
-    }
-
-    res.status(200).json(result.rows);
-  } catch (err) {
-    console.error("Error al obtener viajes:", err);
-    res.status(500).json({ error: "Error al obtener viajes" });
-  }
-}; */
 export const listarViajes = async (req, res) => {
   try {
     const { rol } = req.user;
@@ -190,50 +142,60 @@ export const listarViajesChofer = async (req, res) => {
 };
 
 export const editarViaje = async (req, res) => {
-    const { id } = req.params;
-    const {
-        matricula,
-        cliente_id,
+  const { id } = req.params;
+  const {
+    cliente_id,
+    cliente_nombre,
+    matricula,
+    n_orden,
+    origen,
+    destino,
+    contenedor,
+    tipo_cont,
+    cargado,
+    observaciones,
+  } = req.body;
+
+  try {
+    // resolver cliente similar a crear
+    let clienteId = null;
+    if (cliente_nombre) {
+      clienteId = await getOrCreateClienteId(cliente_nombre);
+    } else if (cliente_id !== undefined && cliente_id !== "" && cliente_id !== null) {
+      const parsed = Number(cliente_id);
+      if (Number.isNaN(parsed)) return res.status(400).json({ message: "cliente_id inválido" });
+      clienteId = parsed;
+    } else {
+      clienteId = null;
+    }
+
+    const cargadoBool = cargado === true || cargado === "true" || cargado === 1 || cargado === "1";
+
+    const result = await pool.query(
+      `UPDATE viajes 
+       SET matricula=$1, cliente_id=$2, n_orden=$3, origen=$4, destino=$5, contenedor=$6, tipo_cont=$7, cargado=$8, observaciones=$9
+       WHERE id=$10 RETURNING *`,
+      [
+        matricula || null,
+        clienteId,
         n_orden,
         origen,
         destino,
-        contenedor,
-        tipo_cont,
-        cargado,
-        observaciones,
-    } = req.body;
-
-  try {
-      const result = await pool.query(
-      `UPDATE viajes 
-      SET matricula=$1, cliente_id=$2, n_orden=$3, 
-           origen=$4, destino=$5, contenedor=$6, tipo_cont=$7, cargado=$8, observaciones=$9
-       WHERE id=$10 RETURNING *`,
-       [
-           matricula,
-           cliente_id,
-           n_orden,
-           origen,
-           destino,
-           contenedor,
-           tipo_cont,
-           cargado,
-           observaciones,
-           id,
-        ]
+        contenedor || null,
+        tipo_cont || null,
+        cargadoBool,
+        observaciones || null,
+        id,
+      ]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Viaje no encontrado" });
-    }
-    
-    res.json(result.rows[0]);
-    console.log("Viaje actualizado:", result.rows[0]);
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Error al actualizar viaje" });
-    }
+    if (result.rows.length === 0) return res.status(404).json({ error: "Viaje no encontrado" });
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("editarViaje error:", err && err.stack ? err.stack : err);
+    res.status(500).json({ error: "Error al actualizar viaje", details: err.message });
+  }
 };
 
 export const eliminarViaje = async (req, res) => {

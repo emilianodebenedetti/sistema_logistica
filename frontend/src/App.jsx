@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/Login";
 import Viajes from "./pages/Viajes";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import AppNavbar from "./components/AppNavbar";
 
 export function PrivateRoute({ children }) {
   const { user } = useAuth();
@@ -14,11 +15,13 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Routes>
+
           <Route path="/login" element={<Login />} />
           <Route
             path="/viajes"
             element={
               <PrivateRoute>
+                <AppNavbar />
                 <Viajes />
               </PrivateRoute>
             }
