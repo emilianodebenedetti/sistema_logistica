@@ -33,16 +33,24 @@ export default function Viajes() {
     fecha: "",
     matricula: "",
     tipo_cont: "",
-    cargado: "",
+    cargado: false,
     observaciones: "",
-    cliente_id: "",
-    // ...agregar otros campos según tu modelo
+    cliente_nombre: "",
+    // ...otros campos...
   });
 
   // asegurar auth
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
+
+  const normalizeViaje = (v) => {
+    return {
+      ...v,
+      cliente_nombre: v.cliente_nombre || v.cliente || v.clienteName || "",
+      usuario_nombre: v.usuario_nombre || v.chofer_nombre || v.chofer || v.choferName || "",
+    };
+  };
 
   const fetchList = async () => {
     setLoading(true);
@@ -58,8 +66,9 @@ export default function Viajes() {
         throw new Error(text || "Error al obtener viajes");
       }
       const data = await res.json();
-      setViajes(Array.isArray(data) ? data : []);
-      if (!data.length) setError("No hay viajes para la fecha seleccionada.");
+      const list = Array.isArray(data) ? data.map(normalizeViaje) : [];
+      setViajes(list);
+      if (!list.length) setError("No hay viajes para la fecha seleccionada.");
     } catch (err) {
       console.error(err);
       setError("Error al cargar los viajes. Intente nuevamente.");
@@ -77,7 +86,6 @@ export default function Viajes() {
   const handleView = async (id) => {
     setError("");
     try {
-      // puedes reutilizar la info si ya está en state
       const local = viajes.find((v) => v.id === id);
       if (local) {
         setSelectedViaje(local);
@@ -89,7 +97,7 @@ export default function Viajes() {
       });
       if (!res.ok) throw new Error("No se pudo obtener el viaje");
       const data = await res.json();
-      setSelectedViaje(data);
+      setSelectedViaje(normalizeViaje(data));
       setShowViewModal(true);
     } catch (err) {
       console.error(err);
@@ -110,7 +118,7 @@ export default function Viajes() {
       tipo_cont: "",
       cargado: false,
       observaciones: "",
-      cliente_id: "",
+      cliente_nombre: "",
     });
     setShowFormModal(true);
   };
@@ -122,7 +130,6 @@ export default function Viajes() {
     try {
       const local = viajes.find((v) => v.id === id);
       const data = local ? local : await (await fetch(`http://localhost:4000/api/viajes/${id}`, { headers: { Authorization: `Bearer ${token}` } })).json();
-      // mapear solo campos que tiene tu form
       setForm({
         n_orden: data.n_orden || "",
         origen: data.origen || "",
@@ -133,7 +140,7 @@ export default function Viajes() {
         tipo_cont: data.tipo_cont || "",
         cargado: !!data.cargado,
         observaciones: data.observaciones || "",
-        cliente_id: data.cliente_id || "",
+        cliente_nombre: data.cliente_nombre || "",
         id: data.id,
       });
       setShowFormModal(true);
@@ -153,14 +160,20 @@ export default function Viajes() {
       const url = isEditing ? `http://localhost:4000/api/viajes/${form.id}` : `http://localhost:4000/api/viajes`;
       const payload = { ...form };
 
-      // si maneja nombre:
+      // always send cliente_nombre (remove cliente_id if present)
       if (payload.cliente_nombre) {
-        // enviar cliente_nombre y no enviar cliente_id
         delete payload.cliente_id;
       } else {
-        // si cliente_id está vacío, no lo envíes
         if (payload.cliente_id === "" || payload.cliente_id == null) delete payload.cliente_id;
       }
+
+      // sanitize contenedor: empty -> null, trim
+      if (payload.contenedor !== undefined) {
+        payload.contenedor = payload.contenedor === "" ? null : String(payload.contenedor).trim();
+      }
+
+      // ensure cargado is boolean
+      payload.cargado = !!payload.cargado;
 
       const res = await fetch(url, {
         method,
@@ -179,7 +192,13 @@ export default function Viajes() {
       setShowFormModal(false);
     } catch (err) {
       console.error(err);
-      setError("No se pudo guardar el viaje.");
+      // try to parse backend json error
+      try {
+        const parsed = JSON.parse(err.message);
+        setError(parsed.message || "No se pudo guardar el viaje.");
+      } catch {
+        setError("No se pudo guardar el viaje.");
+      }
     } finally {
       setActionLoadingId(null);
     }
@@ -224,7 +243,6 @@ export default function Viajes() {
       <div className="flex flex-row justify-between items-center mb-2">
         <h1 className="text-2xl font-bold text-white-800">Viajes</h1>
         <div className="flex items-center gap-2">
-          {/* solo chofer puede crear */}
           {rol === "chofer" && (
             <Button size="xs" color="success" onClick={handleCreate}>
               Crear
@@ -246,6 +264,8 @@ export default function Viajes() {
                 <th className="px-6 py-3">Origen</th>
                 <th className="px-6 py-3">Destino</th>
                 <th className="px-6 py-3">Contenedor</th>
+{/*                 <th className="px-6 py-3">Cliente</th>
+                <th className="px-6 py-3">Chofer</th> */}
                 <th className="px-6 py-3">Acciones</th>
               </tr>
             </thead>
@@ -256,6 +276,8 @@ export default function Viajes() {
                   <td className="px-6 py-3 align-top">{v.origen}</td>
                   <td className="px-6 py-3 align-top">{v.destino}</td>
                   <td className="px-6 py-3 align-top">{v.contenedor}</td>
+{/*                   <td className="px-6 py-3 align-top">{v.cliente_nombre}</td>
+                  <td className="px-6 py-3 align-top">{v.usuario_nombre}</td> */}
                   <td className="px-6 py-3 align-top">
                     <div className="flex items-center gap-2">
                       <button
@@ -308,12 +330,19 @@ export default function Viajes() {
         <div className="space-y-2">
           {selectedViaje ? (
             <>
-              {Object.entries(selectedViaje).map(([key, val]) => (
-                <div key={key} className="flex gap-4">
-                  <div className="font-semibold w-36">{key}:</div>
-                  <div className="flex-1 break-words">{String(val ?? "")}</div>
-                </div>
-              ))}
+              {/* mostrar campos con etiquetas legibles */}
+              <div className="flex gap-4"><div className="font-semibold w-36">id:</div><div>{selectedViaje.id}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Cliente:</div><div>{selectedViaje.cliente_nombre}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Chofer:</div><div>{selectedViaje.usuario_nombre}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Fecha:</div><div>{selectedViaje.fecha}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Matrícula:</div><div>{selectedViaje.matricula}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">N° Orden:</div><div>{selectedViaje.n_orden}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Origen:</div><div>{selectedViaje.origen}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Destino:</div><div>{selectedViaje.destino}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Contenedor:</div><div>{selectedViaje.contenedor}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Tipo cont:</div><div>{selectedViaje.tipo_cont}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Cargado:</div><div>{String(selectedViaje.cargado)}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Observaciones:</div><div>{selectedViaje.observaciones}</div></div>
             </>
           ) : (
             <div>Cargando...</div>
@@ -356,7 +385,13 @@ export default function Viajes() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="contenedor" value="Contenedor" />
-                <TextInput id="contenedor" placeholder="Contenedor" value={form.contenedor} onChange={(e) => setForm({ ...form, contenedor: e.target.value })} />
+                <TextInput
+                  id="contenedor"
+                  placeholder="Ej: ABCD1234567"
+                  value={form.contenedor}
+                  onChange={(e) => setForm({ ...form, contenedor: String(e.target.value || "").toUpperCase() })}
+                />
+                <div className="text-xs text-gray-500 mt-1">Formato: 4 letras mayúsculas + 7 dígitos (p.e. ABCD1234567). Dejar vacío si no aplica.</div>
               </div>
               <div>
                 <Label htmlFor="fechaField" value="Fecha" />
@@ -371,12 +406,29 @@ export default function Viajes() {
               <Label htmlFor="tipo_cont" value="Tipo Contenedor" />
               <TextInput id="tipo_cont" placeholder="Tipo Contenedor" value={form.tipo_cont} onChange={(e) => setForm({ ...form, tipo_cont: e.target.value })} />
             </div>
+
+            <div className="flex items-center gap-2">
+              <div>Cargado</div>
+              <input
+                id="cargado"
+                type="checkbox"
+                checked={!!form.cargado}
+                onChange={(e) => setForm({ ...form, cargado: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="cargado" value="Cargado" />
+            </div>
+
+            <div>
+              <Label htmlFor="cliente_nombre" value="Cliente (nombre)" />
+              <TextInput id="cliente_nombre" placeholder="Nombre del cliente" value={form.cliente_nombre} onChange={(e) => setForm({ ...form, cliente_nombre: e.target.value })} />
+            </div>
+
             <div>
               <Label htmlFor="observaciones" value="Observaciones" />
               <Textarea id="observaciones" placeholder="Observaciones" value={form.observaciones} onChange={(e) => setForm({ ...form, observaciones: e.target.value })} />
             </div>
           </div>
-          {/* {error && <div className="text-sm text-red-500 mt-2">{error}</div>} */}
         </form>
       </SimpleModal>
     </div>
