@@ -33,7 +33,12 @@ export default function AppNavbar() {
         >
           <RiLogoutBoxRLine size={20} />
         </button>
-        {<NavbarToggle />}
+        {/* si es admin ver NavbarToggle */}
+        {rol === "admin" &&(
+          <>
+            <NavbarToggle />
+          </>
+        )}
       </div>
 
 

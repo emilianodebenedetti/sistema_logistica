@@ -47,11 +47,28 @@ export default function Viajes() {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
+  // helper: formatear fechas para mostrar y para input[type=date]
+  function formatDisplayDate(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return String(date);
+    return d.toLocaleDateString("es-ES"); // ejemplo: 04/11/2025
+  }
+  function formatInputDate(date) {
+    if (!date) return "";
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0]; // formato yyyy-mm-dd para input[type=date]
+  }
+
+  // normalizar viajes para tener fecha ready-to-use
   const normalizeViaje = (v) => {
     return {
       ...v,
-      cliente_nombre: v.cliente_nombre || v.cliente || v.clienteName || "",
-      usuario_nombre: v.usuario_nombre || v.chofer_nombre || v.chofer || v.choferName || "",
+      cliente_nombre: v.cliente_nombre || v.cliente || "",
+      usuario_nombre: v.usuario_nombre || v.chofer || "",
+      fecha_display: v.fecha ? formatDisplayDate(v.fecha) : "",
+      fecha_input: v.fecha ? formatInputDate(v.fecha) : "",
     };
   };
 
@@ -190,7 +207,7 @@ export default function Viajes() {
         origen: data.origen || "",
         destino: data.destino || "",
         contenedor: data.contenedor || "",
-        fecha: data.fecha ? new Date(data.fecha).toISOString().split("T")[0] : "",
+        fecha: data.fecha ? formatInputDate(data.fecha) : "",
         matricula: data.matricula || "",
         tipo_cont: data.tipo_cont || "",
         cargado: !!data.cargado,
@@ -299,8 +316,8 @@ export default function Viajes() {
         <h1 className="text-2xl font-bold text-white-800">Viajes</h1>
         <div className="flex items-center gap-2">
           {rol === "chofer" && (
-            <Button size="xs" color="success" onClick={handleCreate}>
-              Crear
+            <Button size="sm" color="green" onClick={handleCreate}>
+              Crear Viaje
             </Button>
           )}
           <Label htmlFor="fecha" value="Seleccionar fecha:" />
@@ -386,8 +403,8 @@ export default function Viajes() {
                         <td className="px-6 py-3 align-top">{v.usuario_nombre}</td>
                       </>
                      )}
-                    <td className="px-2 py-3 align-top">
-                      <div className="flex items-center gap-2">
+                    <td className="py-3 align-top">
+                      <div className="flex items-center gap-1">
                         <button
                           title="Ver"
                           aria-label="Ver viaje"
@@ -450,7 +467,8 @@ export default function Viajes() {
               <div className="flex gap-4"><div className="font-semibold w-36">id:</div><div>{selectedViaje.id}</div></div>
               <div className="flex gap-4"><div className="font-semibold w-36">Cliente:</div><div>{selectedViaje.cliente_nombre}</div></div>
               <div className="flex gap-4"><div className="font-semibold w-36">Chofer:</div><div>{selectedViaje.usuario_nombre}</div></div>
-              <div className="flex gap-4"><div className="font-semibold w-36">Fecha:</div><div>{selectedViaje.fecha}</div></div>
+              <div className="flex gap-4"><div className="font-semibold w-36">Fecha:</div>
+                <div>{selectedViaje.fecha_display || formatDisplayDate(selectedViaje.fecha)}</div></div>
               <div className="flex gap-4"><div className="font-semibold w-36">Matrícula:</div><div>{selectedViaje.matricula}</div></div>
               <div className="flex gap-4"><div className="font-semibold w-36">N° Orden:</div><div>{selectedViaje.n_orden}</div></div>
               <div className="flex gap-4"><div className="font-semibold w-36">Origen:</div><div>{selectedViaje.origen}</div></div>
@@ -473,10 +491,10 @@ export default function Viajes() {
         onClose={() => setShowFormModal(false)}
         footer={
           <div className="flex gap-2 justify-end">
-            <Button type="submit" form="viaje-form" color="success" disabled={actionLoadingId === "form"}>
+            <Button type="submit" form="viaje-form" color="green" disabled={actionLoadingId === "form"}>
               {actionLoadingId === "form" ? "Guardando..." : "Guardar"}
             </Button>
-            <Button color="gray" onClick={() => setShowFormModal(false)}>
+            <Button color="red" onClick={() => setShowFormModal(false)}>
               Cancelar
             </Button>
           </div>
@@ -507,7 +525,7 @@ export default function Viajes() {
                   value={form.contenedor}
                   onChange={(e) => setForm({ ...form, contenedor: String(e.target.value || "").toUpperCase() })}
                 />
-                <div className="text-xs text-gray-500 mt-1">Formato: 4 letras mayúsculas + 7 dígitos (p.e. ABCD1234567). Dejar vacío si no aplica.</div>
+                <div className="text-xs text-gray-500 mt-1">4 letras + 7 dígitos (p.e. ABCD1234567)</div>
               </div>
               <div>
                 <Label htmlFor="fechaField" value="Fecha" />
