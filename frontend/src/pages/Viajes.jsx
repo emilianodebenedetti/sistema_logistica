@@ -338,14 +338,9 @@ export default function Viajes() {
     <div className="p-6">
       <div className="flex flex-row justify-between items-center mb-2">
         <h1 className="text-2xl font-bold text-white-800">Viajes</h1>
-        <div className="flex items-center gap-2">
-          {rol === "chofer" && (
-            <Button size="sm" color="green" onClick={handleCreate}>
-              Crear Viaje
-            </Button>
-          )}
-          
-        </div>
+        {/* <div className="flex items-center gap-2">
+         
+        </div> */}
       </div>
 
       {error ? (
@@ -353,48 +348,60 @@ export default function Viajes() {
       ) : (
         <>
           {/* Filters (admin) */}
-          {rol === "admin" && (
-            <div className="flex gap-4 items-end mb-4">
-              <div className="w-48">
-                Chofer:
-                <Label value="Usuario" />
-                <select
-                  className="w-full rounded px-2 py-1"
-                  value={selectedUsuario}
-                  onChange={(e) => setSelectedUsuario(e.target.value)}
-                >
-                  <option value="">Todos</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
-              <div className="w-48">
-                Cliente:
-                <Label value="Cliente"/>
-                <select
-                  className="w-full rounded px-2 py-1 text-black"
-                  value={selectedCliente}
-                  onChange={(e) => setSelectedCliente(e.target.value)}
-                >
-                  <option value="">Todos</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </select>
+          {/* 
+          contenedor para crear viaje(chofer) o filtros(admin)
+
+          */}
+          <div className="mb-4 flex justify-between items-end">
+            {rol === "admin" && (
+              <div className="flex gap-4 items-end mb-4">
+                <div className="w-48">
+                  Chofer:
+                  <Label value="Usuario" />
+                  <select
+                    className="w-full rounded px-2 py-1"
+                    value={selectedUsuario}
+                    onChange={(e) => setSelectedUsuario(e.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="w-48">
+                  Cliente:
+                  <Label value="Cliente"/>
+                  <select
+                    className="w-full rounded px-2 py-1 text-black"
+                    value={selectedCliente}
+                    onChange={(e) => setSelectedCliente(e.target.value)}
+                  >
+                    <option value="">Todos</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div>
+            )}{rol === "chofer" && (
+              <Button size="md" color="green" onClick={handleCreate}>
+                Crear Viaje
+              </Button>
+            )}
+            <div className="">
               Fecha:
-                <Label htmlFor="fecha" value="Seleccionar fecha:" />
-                <TextInput id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-              </ div>
+              <Label htmlFor="fecha" value="Seleccionar fecha:" />
+              <TextInput id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
-          )}
+          </div>
+          
 
           {/* Single table with resultados (usá el estado viajes) */}
           <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
@@ -507,7 +514,6 @@ export default function Viajes() {
           )}
         </div>
       </SimpleModal>
-
       {/* Modal Crear / Editar (SimpleModal) */}
       <SimpleModal
         show={showFormModal}
