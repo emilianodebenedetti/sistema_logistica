@@ -1,30 +1,35 @@
-// ...existing code...
-import { Badge, Button, Navbar, NavbarBrand, NavbarCollapse, NavbarLink, NavbarToggle } from "flowbite-react";
+import { Badge, Navbar, NavbarBrand, NavbarCollapse, NavbarToggle } from "flowbite-react";
 import { RiLogoutBoxRLine } from "react-icons/ri";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function AppNavbar() {
   const navigate = useNavigate();
-  const rol = localStorage.getItem("rol"); // or get from AuthContext
-  const user = localStorage.getItem("user"); // or get from AuthContext
-  console.log("User data from localStorage:", user);
+  const rol = localStorage.getItem("rol") || "";
 
   const handleLogout = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     localStorage.removeItem("token");
     localStorage.removeItem("rol");
+    localStorage.removeItem("user");
+    localStorage.removeItem("user_nombre");
     navigate("/login");
   };
 
   return (
     <Navbar fluid className="mb-6 shadow">
-      <NavbarBrand href="/">
-        <span className="self-center whitespace-nowrap text-xl text-white font-semibold">Sistema Logístico</span>
+      <NavbarBrand>
+        <span
+          role="button"
+          onClick={() => navigate("/")}
+          className="self-center whitespace-nowrap text-xl text-white font-semibold cursor-pointer"
+        >
+          Sistema Logístico
+        </span>
       </NavbarBrand>
+
       <div className="flex md:order-2">
-        {/* <Button className="mr-2">{user.nombre}</Button> */}
         <Badge color="light" size="sm" className="mr-4 self-center">{rol}</Badge>
-        {/* <Button href="#" onClick={handleLogout}>Cerrar sesión</Button> */}
+
         <button
           onClick={handleLogout}
           title="Cerrar sesión"
@@ -32,26 +37,42 @@ export default function AppNavbar() {
         >
           <RiLogoutBoxRLine size={20} />
         </button>
-        {/* si es admin ver NavbarToggle */}
-        {rol === "admin" &&(
-          <>
-            <NavbarToggle />
-          </>
-        )}
+
+        <NavbarToggle />
       </div>
-        {rol === "admin" && (
-          <>
-            <NavbarCollapse>
-              <NavbarLink href="/viajes">Viajes</NavbarLink>
-              <NavbarLink href="/usuarios">Usuarios</NavbarLink>
-              <NavbarLink href="/clientes">Clientes</NavbarLink>
-            </NavbarCollapse>   
-          </>
-        )}
 
-        {/* {rol === "chofer" && <NavbarLink href="/mi-perfil">Mi Perfil</NavbarLink>} */}
+      <NavbarCollapse>
+        <div className="flex flex-col md:flex-row md:items-center gap-0 md:gap-2">
+          {/* Viajes visible para todos */}
+          <Link
+            to="/viajes"
+            className="block py-2 px-3 hover:underline"
+            style={{ color: "white", cursor: "pointer" }}
+          >
+            Viajes
+          </Link>
 
-        
+         {/*  {rol === "admin" && (
+            <>
+              <Link
+                to="/usuarios"
+                className="block py-2 px-3 hover:underline"
+                style={{ color: "white", cursor: "pointer" }}
+              >
+                Usuarios
+              </Link>
+
+              <Link
+                to="/clientes"
+                className="block py-2 px-3 hover:underline"
+                style={{ color: "white", cursor: "pointer" }}
+              >
+                Clientes
+              </Link>
+            </>
+          )} */}
+        </div>
+      </NavbarCollapse>
     </Navbar>
   );
 }
