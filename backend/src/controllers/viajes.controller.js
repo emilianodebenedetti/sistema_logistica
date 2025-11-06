@@ -199,7 +199,8 @@ export const obtenerViaje = async (req, res) => {
 export const listarViajes = async (req, res) => {
   try {
     const { rol } = req.user;
-    const { fecha } = req.query;
+    // parámetros opcionales de filtro
+    const { fecha, usuario_id, cliente_id } = req.query;
 
     if (rol !== "admin") {
       return res.status(403).json({ message: "Acceso denegado: solo administradores" });
@@ -207,21 +208,30 @@ export const listarViajes = async (req, res) => {
 
     const fechaFiltro = fecha || new Date().toISOString().split("T")[0];
 
+    // construir query dinámico
+    let where = [`DATE(v.fecha) = $1`];
+    const params = [fechaFiltro];
+    let idx = 2;
+
+    if (usuario_id) {
+      where.push(`v.usuario_id = $${idx++}`);
+      params.push(Number(usuario_id));
+    }
+    if (cliente_id) {
+      where.push(`v.cliente_id = $${idx++}`);
+      params.push(Number(cliente_id));
+    }
+
     const query = `
-      SELECT v.*, u.nombre AS chofer_nombre, c.nombre AS cliente_nombre
+      SELECT v.*, u.nombre AS usuario_nombre, c.nombre AS cliente_nombre
       FROM viajes v
       LEFT JOIN usuarios u ON v.usuario_id = u.id
       LEFT JOIN clientes c ON v.cliente_id = c.id
-      WHERE DATE(v.fecha) = $1
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY v.fecha DESC
     `;
 
-    const result = await pool.query(query, [fechaFiltro]);
-
-    if (result.rows.length === 0) {
-      return res.status(200).json([]);
-    }
-
+    const result = await pool.query(query, params);
     res.json(result.rows);
   } catch (err) {
     console.error("Error al listar viajes:", err);

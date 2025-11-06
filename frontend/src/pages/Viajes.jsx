@@ -16,6 +16,10 @@ export default function Viajes() {
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [selectedUsuario, setSelectedUsuario] = useState("");
+  const [selectedCliente, setSelectedCliente] = useState("");
   const token = localStorage.getItem("token");
   const rol = localStorage.getItem("rol");
   const navigate = useNavigate();
@@ -36,7 +40,6 @@ export default function Viajes() {
     cargado: false,
     observaciones: "",
     cliente_nombre: "",
-    // ...otros campos...
   });
 
   // asegurar auth
@@ -52,35 +55,87 @@ export default function Viajes() {
     };
   };
 
+  // fetch users and clients for admin filters
+  useEffect(() => {
+    if (rol !== "admin") return;
+    const token = localStorage.getItem("token");
+    const fetchLists = async () => {
+      try {
+        const [uRes, cRes] = await Promise.all([
+          fetch("http://localhost:4000/api/usuarios", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("http://localhost:4000/api/clientes", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (uRes.ok) setUsers(await uRes.json());
+        if (cRes.ok) setClients(await cRes.json());
+      } catch (err) {
+        console.error("Error cargando usuarios o clientes:", err);
+      }
+    };
+    fetchLists();
+  }, [rol]);
+
+  // ajustar fetchList para usar filtros seleccionados
   const fetchList = async () => {
     setLoading(true);
     setError("");
     try {
-      const url =
-        rol === "admin"
-          ? `http://localhost:4000/api/viajes?fecha=${fecha}`
-          : `http://localhost:4000/api/viajes/chofer?fecha=${fecha}`;
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams();
+      params.set("fecha", fecha);
+      if (selectedUsuario) params.set("usuario_id", selectedUsuario);
+      if (selectedCliente) params.set("cliente_id", selectedCliente);
+
+      const url = rol === "admin"
+        ? `http://localhost:4000/api/viajes?${params.toString()}`
+        : `http://localhost:4000/api/viajes/chofer?fecha=${fecha}`;
+
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Error al obtener viajes");
-      }
+      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      const list = Array.isArray(data) ? data.map(normalizeViaje) : [];
-      setViajes(list);
-      if (!list.length) setError("No hay viajes para la fecha seleccionada.");
+      setViajes(Array.isArray(data) ? data.map(normalizeViaje) : []);
     } catch (err) {
       console.error(err);
-      setError("Error al cargar los viajes. Intente nuevamente.");
+      setError("Error al cargar los viajes.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // exportar resultados actuales a Excel
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams();
+      params.set("fecha", fecha);
+      if (selectedUsuario) params.set("usuario_id", selectedUsuario);
+      if (selectedCliente) params.set("cliente_id", selectedCliente);
+
+      const res = await fetch(`http://localhost:4000/api/reportes/viajes?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "Error al exportar");
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `viajes_${fecha}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export error:", err);
+      setError("No se pudo exportar los viajes.");
     }
   };
 
   useEffect(() => {
     if (token) fetchList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, fecha, rol]);
+  }, [token, fecha, rol, selectedUsuario, selectedCliente]);
 
   // Mostrar (modal) -> trae datos si no los tiene
   const handleView = async (id) => {
@@ -256,68 +311,129 @@ export default function Viajes() {
       {error ? (
         <Alert color="warning">{error}</Alert>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
-          <table className="w-full text-sm text-left text-gray-600">
-            <thead className="text-xs uppercase text-gray-700 bg-gray-50">
-              <tr>
-                <th className="px-6 py-3">N° Orden</th>
-                <th className="px-6 py-3">Origen</th>
-                <th className="px-6 py-3">Destino</th>
-                <th className="px-6 py-3">Contenedor</th>
-{/*                 <th className="px-6 py-3">Cliente</th>
-                <th className="px-6 py-3">Chofer</th> */}
-                <th className="px-6 py-3">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {viajes.map((v) => (
-                <tr key={v.id} className="bg-white">
-                  <td className="px-6 py-3 align-top">{v.n_orden}</td>
-                  <td className="px-6 py-3 align-top">{v.origen}</td>
-                  <td className="px-6 py-3 align-top">{v.destino}</td>
-                  <td className="px-6 py-3 align-top">{v.contenedor}</td>
-{/*                   <td className="px-6 py-3 align-top">{v.cliente_nombre}</td>
-                  <td className="px-6 py-3 align-top">{v.usuario_nombre}</td> */}
-                  <td className="px-6 py-3 align-top">
-                    <div className="flex items-center gap-2">
-                      <button
-                        title="Ver"
-                        aria-label="Ver viaje"
-                        className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50"
-                        onClick={() => handleView(v.id)}
-                      >
-                        <FaEye className="text-sm" />
-                      </button>
+        <>
+          {/* Filters (admin) */}
+          {rol === "admin" && (
+            <div className="flex gap-4 items-end mb-4">
+              <div className="w-48">
+                <Label value="Usuario" />
+                <select
+                  className="w-full rounded px-2 py-1"
+                  value={selectedUsuario}
+                  onChange={(e) => setSelectedUsuario(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                      {rol === "chofer" && (
-                        <>
-                          <button
-                            title="Editar"
-                            aria-label="Editar viaje"
-                            className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50"
-                            onClick={() => handleEdit(v.id)}
-                          >
-                            <FaEdit className="text-sm" />
-                          </button>
+              <div className="w-48">
+                <Label value="Cliente" />
+                <select
+                  className="w-full rounded px-2 py-1"
+                  value={selectedCliente}
+                  onChange={(e) => setSelectedCliente(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                          <button
-                            title="Eliminar"
-                            aria-label="Eliminar viaje"
-                            className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50 text-red-600"
-                            onClick={() => handleDelete(v.id)}
-                            disabled={actionLoadingId === v.id}
-                          >
-                            {actionLoadingId === v.id ? "..." : <FaTrash />}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
+              <div className="ml-auto">
+                <Button color="gray" onClick={handleExport}>
+                  Exportar Excel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Single table with resultados (usá el estado viajes) */}
+          <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-md">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs uppercase text-gray-700 bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3">N° Orden</th>
+                  <th className="px-6 py-3">Origen</th>
+                  <th className="px-6 py-3">Destino</th>
+                  {rol === "admin" && (
+                    <>
+                      <th className="px-6 py-3">Contenedor</th>
+                      <th className="px-6 py-3">Cliente</th>
+                      <th className="px-6 py-3">Chofer</th>
+                    </>
+                  )}
+                  <th className="px-6 py-3">Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y">
+                {viajes.map((v) => (
+                  <tr key={v.id} className="bg-white">
+                    <td className="px-6 py-3 align-top">{v.n_orden}</td>
+                    <td className="px-6 py-3 align-top">{v.origen}</td>
+                    <td className="px-6 py-3 align-top">{v.destino}</td>
+                    {rol === "admin" && (
+                      <>
+                        <td className="px-6 py-3 align-top">{v.contenedor}</td>
+                        <td className="px-6 py-3 align-top">{v.cliente_nombre}</td>
+                        <td className="px-6 py-3 align-top">{v.usuario_nombre}</td>
+                      </>
+                     )}
+                    <td className="px-2 py-3 align-top">
+                      <div className="flex items-center gap-2">
+                        <button
+                          title="Ver"
+                          aria-label="Ver viaje"
+                          className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50"
+                          onClick={() => handleView(v.id)}
+                        >
+                          <FaEye className="text-sm" />
+                        </button>
+
+                        {rol === "chofer" && (
+                          <>
+                            <button
+                              title="Editar"
+                              aria-label="Editar viaje"
+                              className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50"
+                              onClick={() => handleEdit(v.id)}
+                            >
+                              <FaEdit className="text-sm" />
+                            </button>
+
+                            <button
+                              title="Eliminar"
+                              aria-label="Eliminar viaje"
+                              className="w-8 h-8 flex items-center justify-center rounded-sm border border-gray-200 text-sm bg-white hover:bg-gray-50 text-red-600"
+                              onClick={() => handleDelete(v.id)}
+                              disabled={actionLoadingId === v.id}
+                            >
+                              {actionLoadingId === v.id ? "..." : <FaTrash />}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {viajes.length === 0 && (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                      No hay viajes para la selección.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {/* Modal Ver (SimpleModal) */}

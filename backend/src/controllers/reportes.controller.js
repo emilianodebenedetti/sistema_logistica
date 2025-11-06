@@ -1,5 +1,5 @@
-import pool from "../config/db.js";
 import ExcelJS from "exceljs";
+import pool from "../config/db.js";
 
 export const obtenerViajes = async (req, res) => {
   try {
@@ -158,4 +158,73 @@ export const exportarExcelGeneral = async (req, res) => {
     console.error("❌ Error al generar Excel general:", err);
     res.status(500).json({ error: "Error al generar el Excel general" });
   }
-};  
+};
+
+export const exportarViajesExcel = async (req, res) => {
+  try {
+    const { fecha, usuario_id, cliente_id } = req.query;
+
+    const fechaFiltro = fecha || new Date().toISOString().split("T")[0];
+
+    let where = [`DATE(v.fecha) = $1`];
+    const params = [fechaFiltro];
+    let idx = 2;
+
+    if (usuario_id) {
+      where.push(`v.usuario_id = $${idx++}`);
+      params.push(Number(usuario_id));
+    }
+    if (cliente_id) {
+      where.push(`v.cliente_id = $${idx++}`);
+      params.push(Number(cliente_id));
+    }
+
+    const query = `
+      SELECT v.id, v.fecha, v.n_orden, v.origen, v.destino, v.contenedor, v.tipo_cont, v.cargado,
+             v.matricula, v.observaciones,
+             u.nombre AS usuario_nombre, c.nombre AS cliente_nombre
+      FROM viajes v
+      LEFT JOIN usuarios u ON v.usuario_id = u.id
+      LEFT JOIN clientes c ON v.cliente_id = c.id
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
+      ORDER BY v.fecha DESC
+    `;
+
+    const result = await pool.query(query, params);
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Viajes");
+
+    sheet.columns = [
+      { header: "ID", key: "id", width: 8 },
+      { header: "Fecha", key: "fecha", width: 20 },
+      { header: "N° Orden", key: "n_orden", width: 20 },
+      { header: "Origen", key: "origen", width: 20 },
+      { header: "Destino", key: "destino", width: 20 },
+      { header: "Contenedor", key: "contenedor", width: 18 },
+      { header: "Tipo Cont.", key: "tipo_cont", width: 12 },
+      { header: "Cargado", key: "cargado", width: 8 },
+      { header: "Matrícula", key: "matricula", width: 12 },
+      { header: "Cliente", key: "cliente_nombre", width: 20 },
+      { header: "Chofer", key: "usuario_nombre", width: 20 },
+      { header: "Observaciones", key: "observaciones", width: 30 },
+    ];
+
+    result.rows.forEach((r) => {
+      sheet.addRow({
+        ...r,
+        fecha: r.fecha ? new Date(r.fecha).toISOString() : "",
+        cargado: r.cargado ? "Sí" : "No",
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader("Content-Disposition", `attachment; filename="viajes_${fechaFiltro}.xlsx"`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    return res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error("Error exportando viajes:", err);
+    res.status(500).json({ message: "Error al exportar viajes" });
+  }
+};
