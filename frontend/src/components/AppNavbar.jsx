@@ -51,7 +51,6 @@ export default function AppNavbar() {
           >
             Viajes
           </Link>
-
          {/*  {rol === "admin" && (
             <>
               <Link
