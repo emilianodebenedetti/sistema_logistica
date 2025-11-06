@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Viajes from "./pages/Viajes";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AppNavbar from "./components/AppNavbar";
+import AppFooter from "./components/AppFooter";
 
 export function PrivateRoute({ children }) {
   const { user } = useAuth();
@@ -25,10 +26,11 @@ export default function App() {
                 <Viajes />
               </PrivateRoute>
             }
-          />
+            />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </Router>
+            <AppFooter/>
     </AuthProvider>
   );
 }

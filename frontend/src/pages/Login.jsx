@@ -29,9 +29,9 @@ export default function Login() {
         <p className="text-sm text-gray-500">by chili.dev</p>
       </header>
 
-      <main className="flex-1 flex items-center justify-center">
-        <Card className="w-full max-w-md rounded-xl bg-[#F5F6F2] border border-gray-50 shadow-sm p-6">
-          <legend className="text-lg font-semibold mb-4">Inicia Sesión</legend>
+      <main className="flex-1 flex items-center justify-center px-6">
+        <Card className="w-full max-w-md rounded-xl border border-gray-50 shadow-sm" >{/* style={{ backgroundColor: "#0000003d" }} */}
+          <legend className="text-lg font-semibold mb-4 text-white">Inicia Sesión</legend>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
               <Label htmlFor="email" value="Correo electrónico" className="mb-2 " />
@@ -64,54 +64,9 @@ export default function Login() {
             <Button type="submit" className="w-full rounded-full bg-[#426B1F]">
               Iniciar Sesión
             </Button>
-
-            <p className="text-center text-sm text-gray-600 mt-3">
-              No tienes cuenta? <a className="text-green-700 underline" href="#">Regístrate gratis!</a>
-            </p>
           </form>
         </Card>
       </main>
-
-      <footer className="w-full py-6 text-center text-sm text-gray-500">
-        Copyright © {new Date().getFullYear()} - chili.dev
-      </footer>
     </div>
   );
- /*  return (
-    <div className="flex items-center justify-center h-screen" >         
-      <Card className="max-w-sm w-full px-6" style={{ backgroundColor: "#E6E6E6" }}>
-        <legend className="text-2xl text-left">Iniciar Sesión</legend>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <div className="mb-2 block">
-                <Label htmlFor="email" value="Email" >Email</Label>
-              </div>
-              <TextInput
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="Ingresa tu email..."
-                required
-                />
-            </div>
-            <div>
-              <div className="mb-2 block">
-                <Label htmlFor="password" value="Password" >Contraseña</Label>
-              </div>
-              <TextInput
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Ingresa tu contraseña..."
-                required
-                />
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-             <Button type="submit" className="text-left">Iniciar Sesion</Button>
-          </form>
-      </Card>
-    </div>
-  ); */
 }
