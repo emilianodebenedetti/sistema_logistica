@@ -355,12 +355,12 @@ export default function Viajes() {
           */}
           <div className="mb-4 flex justify-between items-end">
             {rol === "admin" && (
-              <div className="flex gap-4 items-end mb-4">
+              <div className="flex gap-4 items-end ">
                 <div className="w-48">
                   Chofer:
                   <Label value="Usuario" />
                   <select
-                    className="w-full rounded px-2 py-1"
+                    className="w-full rounded px-2 "
                     value={selectedUsuario}
                     onChange={(e) => setSelectedUsuario(e.target.value)}
                   >
@@ -377,7 +377,7 @@ export default function Viajes() {
                   Cliente:
                   <Label value="Cliente"/>
                   <select
-                    className="w-full rounded px-2 py-1 text-black"
+                    className="w-full rounded px-2 "
                     value={selectedCliente}
                     onChange={(e) => setSelectedCliente(e.target.value)}
                   >
