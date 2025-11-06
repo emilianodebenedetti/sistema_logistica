@@ -9,10 +9,12 @@ import {
 } from "flowbite-react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
+import { PiMicrosoftExcelLogoBold, PiMicrosoftExcelLogoLight } from "react-icons/pi";
 
 export default function Viajes() {
   const [viajes, setViajes] = useState([]);
   const [loading, setLoading] = useState(true);
+  //por defecto que no seleccione ninguna fecha, es decir que marque viajes de todas las fechas
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
   const [error, setError] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -20,6 +22,7 @@ export default function Viajes() {
   const [clients, setClients] = useState([]);
   const [selectedUsuario, setSelectedUsuario] = useState("");
   const [selectedCliente, setSelectedCliente] = useState("");
+  const [exportLoading, setExportLoading] = useState(false);
   const token = localStorage.getItem("token");
   const rol = localStorage.getItem("rol");
   const navigate = useNavigate();
@@ -120,6 +123,9 @@ export default function Viajes() {
 
   // exportar resultados actuales a Excel
   const handleExport = async () => {
+    if (!viajes || viajes.length === 0) return;
+    setExportLoading(true);
+    setError("");
     try {
       const token = localStorage.getItem("token");
       const params = new URLSearchParams();
@@ -130,22 +136,40 @@ export default function Viajes() {
       const res = await fetch(`http://localhost:4000/api/reportes/viajes?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // si el backend devuelve JSON con error
+      const contentType = res.headers.get("content-type") || "";
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || "Error al exportar");
+        if (contentType.includes("application/json")) {
+          const json = await res.json();
+          throw new Error(json.message || "Error al exportar");
+        }
+        const text = await res.text();
+        throw new Error(text || "Error al exportar");
       }
+
       const blob = await res.blob();
+      // intentar obtener filename desde headers
+      let filename = `viajes_${fecha}.xlsx`;
+      const disposition = res.headers.get("content-disposition") || "";
+      const match = disposition.match(/filename\*=UTF-8''(.+)|filename="(.+)"|filename=(.+)/);
+      if (match) {
+        filename = decodeURIComponent(match[1] || match[2] || match[3]);
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `viajes_${fecha}.xlsx`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export error:", err);
-      setError("No se pudo exportar los viajes.");
+      setError(err.message || "No se pudo exportar los viajes.");
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -320,8 +344,7 @@ export default function Viajes() {
               Crear Viaje
             </Button>
           )}
-          <Label htmlFor="fecha" value="Seleccionar fecha:" />
-          <TextInput id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          
         </div>
       </div>
 
@@ -333,6 +356,7 @@ export default function Viajes() {
           {rol === "admin" && (
             <div className="flex gap-4 items-end mb-4">
               <div className="w-48">
+                Chofer:
                 <Label value="Usuario" />
                 <select
                   className="w-full rounded px-2 py-1"
@@ -349,9 +373,10 @@ export default function Viajes() {
               </div>
 
               <div className="w-48">
-                <Label value="Cliente" />
+                Cliente:
+                <Label value="Cliente"/>
                 <select
-                  className="w-full rounded px-2 py-1"
+                  className="w-full rounded px-2 py-1 text-black"
                   value={selectedCliente}
                   onChange={(e) => setSelectedCliente(e.target.value)}
                 >
@@ -363,12 +388,11 @@ export default function Viajes() {
                   ))}
                 </select>
               </div>
-
-              <div className="ml-auto">
-                <Button color="gray" onClick={handleExport}>
-                  Exportar Excel
-                </Button>
-              </div>
+              <div>
+              Fecha:
+                <Label htmlFor="fecha" value="Seleccionar fecha:" />
+                <TextInput id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              </ div>
             </div>
           )}
 
@@ -565,10 +589,23 @@ export default function Viajes() {
           </div>
         </form>
       </SimpleModal>
+      {rol === "admin" && (
+        <div className="flex justify-center mt-4">
+          <Button
+            color="green"
+            onClick={handleExport}
+            disabled={exportLoading || !viajes || viajes.length === 0}
+          >
+            {exportLoading ? "Exportando..." : "Exportar Excel"}
+            <PiMicrosoftExcelLogoLight size={20} className="ml-2" />
+          </Button>
+        </div>
+      )}
     </div>
+    
   );
 }
-
+           
 // Simple modal (sin dependencia de flowbite)
 function SimpleModal({ show, title, onClose, children, footer }) {
   if (!show) return null;

@@ -21,7 +21,6 @@ export default function AppNavbar() {
       <NavbarBrand href="/">
         <span className="self-center whitespace-nowrap text-xl text-white font-semibold">Sistema Logístico</span>
       </NavbarBrand>
-
       <div className="flex md:order-2">
         {/* <Button className="mr-2">{user.nombre}</Button> */}
         <Badge color="light" size="sm" className="mr-4 self-center">{rol}</Badge>
@@ -40,15 +39,12 @@ export default function AppNavbar() {
           </>
         )}
       </div>
-
-
         {rol === "admin" && (
           <>
             <NavbarCollapse>
               <NavbarLink href="/viajes">Viajes</NavbarLink>
               <NavbarLink href="/usuarios">Usuarios</NavbarLink>
               <NavbarLink href="/clientes">Clientes</NavbarLink>
-              <NavbarLink href="/reportes">Reportes</NavbarLink>
             </NavbarCollapse>   
           </>
         )}

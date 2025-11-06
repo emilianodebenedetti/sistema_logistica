@@ -7,15 +7,11 @@ import {
   exportarExcelGeneral,
   exportarViajesExcel
 } from "../controllers/reportes.controller.js";
-/* import { verifyToken } from "../middleware/auth.middleware.js";
- */
+/* import { verifyToken } from "../middleware/auth.middleware.js"; */
+
 const router = express.Router();
 
-router.get("/viajes", obtenerViajes);//tsteado y funcionando
-router.get("/viajes/chofer/:id", filtrarPorChofer);//tsteado y funcionando
-router.get("/viajes/cliente/:id", filtrarPorCliente);//
-router.get("/viajes/excel", exportarExcel);// 
-router.get("/viajes/excel/general", exportarExcelGeneral);
 router.get("/viajes", exportarViajesExcel);
+router.get("/general", exportarExcelGeneral);
 
 export default router;
